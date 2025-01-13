@@ -2,27 +2,24 @@ package com.example.newsupdates
 
 import android.annotation.SuppressLint
 import android.net.Uri
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.scrollable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.IconButton
 import androidx.compose.material.Scaffold
-import androidx.compose.material.TopAppBar
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -43,14 +40,24 @@ import coil.compose.rememberAsyncImagePainter
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextDecoration
+import com.example.newsupdates.roomdb.User
+import com.example.newsupdates.viewmodel.UserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
 fun DetailScreen(article: Article,navController: NavController) {
+
+    val myList: MutableList<String> = mutableListOf()
+
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -82,37 +89,69 @@ fun DetailScreen(article: Article,navController: NavController) {
             article.title,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp) // Add some space between title and image
+            modifier = Modifier.padding(bottom = 16.dp)
         )
 
         // Image
-        article.urlToImage?.let {
-            Image(
-                painter = rememberAsyncImagePainter(model = it),
-                contentDescription = null,
-                modifier = Modifier
-                    .fillMaxWidth() // Make the image fill the width of its container
-                    .height(200.dp) // Set a fixed height to make it rectangular
-                    .clip(RoundedCornerShape(20.dp)) // Optional: Add rounded corners
-                    .padding(8.dp), // Optional: Add padding around the image
-                contentScale = ContentScale.Crop
-            )
+        Box(modifier = Modifier.fillMaxWidth().height(200.dp)){
+
+
+            article.urlToImage?.let {
+                Image(
+                    painter = rememberAsyncImagePainter(model = it),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth() // Make the image fill the width of its container
+                        .height(200.dp) // Set a fixed height to make it rectangular
+                        .clip(RoundedCornerShape(20.dp)) // Optional: Add rounded corners
+                        .padding(8.dp), // Optional: Add padding around the image
+                    contentScale = ContentScale.Crop
+                )
+            }
+
         }
 
-        // Author and Published Date
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp) // Add space between the image and content
-        ) {
-            article.author?.let { Text(text = "By $it") }
-            article.publishedAt?.let { Text(text = "Published on $it") }
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically){
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(bottom = 16.dp) // Add space between the image and content
+            ) {
+                article.author?.let { Text(text = "By $it") }
+                article.publishedAt?.let { Text(text = "Published on $it") }
+            }
+//            var saved1 by remember { mutableStateOf(false) }
+//            androidx.compose.material3.IconButton(
+//                modifier = Modifier.size(30.dp),
+//                onClick = {
+//
+//                    if(saved1){
+//
+//
+//                       // viewModel.upsertUser(SavedDb)
+//                    }else{
+//
+//                    }
+//                    saved1 = !saved1
+//                }
+//            ) {
+//                if(saved1){
+//                    Icon(modifier = Modifier.size(30.dp), imageVector = Icons.Default.Favorite, contentDescription = "saved")
+//                }else{
+//                    Icon(modifier = Modifier.size(30.dp),imageVector = Icons.Default.FavoriteBorder, contentDescription = "saved")
+//                }
+//
+//            }
         }
+        // Author and Published Date
+
 
         article.description?.let { Text(
             text= it,
             fontSize = 16.sp,
             fontWeight = FontWeight.SemiBold) }
+
         // Content Section: Making sure it's scrollable and displays all text
         val scrollState = rememberScrollState()
         Column(

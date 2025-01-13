@@ -1,13 +1,6 @@
 package com.example.newsupdates
 
-import android.graphics.drawable.Icon
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.BasicText
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -24,7 +17,7 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(onTimeout: () -> Unit) {
-    // Delay for 2 seconds before navigating to the main screen
+    // Delay for 3 seconds before navigating to the main screen
     LaunchedEffect(Unit) {
         delay(3000)
         onTimeout()
@@ -43,7 +36,7 @@ fun SplashScreen(onTimeout: () -> Unit) {
                 contentAlignment = Alignment.Center,
                 modifier = Modifier.size(50.dp)
             ) {
-                CircularProgressIndicator() // Show a loading spinner
+                CircularProgressIndicator(color = Color.Black) // Show a loading spinner
             }
         }
 

@@ -12,26 +12,14 @@ data class Article(
     val content: String?,
     val author: String?,
     val publishedAt: String?,
-    //val source: Source,
+
     val url: String,
     val urlToImage: String?
 )
-data class Source(
-    val id: String?,
-    val name: String
-)
+
 
 data class NewsResponse(val articles: List<Article>)
 
-interface NewsApiService1 {
-    @GET("v2/top-headlines")
-    suspend fun getTopHeadlines(
-        @Query("q") searchQuery :String,
-        @Query("category") category :String ,
-        @Query("country") country: String,
-        @Query("apiKey") apiKey: String
-    ): NewsResponse
-}
 
 interface NewsApiService {
 

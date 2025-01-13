@@ -25,6 +25,7 @@ class NewsViewModel : ViewModel() {
         }
     }
     fun fetchNewsByCategory(apiKey: String, category: String) {
+
         viewModelScope.launch {
             try {
 

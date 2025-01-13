@@ -1,15 +1,21 @@
 package com.example.newsupdates
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.Card
@@ -21,7 +27,11 @@ import androidx.compose.material.ScaffoldState
 import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.rememberDrawerState
 import androidx.compose.material.rememberScaffoldState
@@ -32,6 +42,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SearchBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -54,11 +65,15 @@ import coil.compose.rememberAsyncImagePainter
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -66,20 +81,45 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
+
 fun NewsScreen(viewModel: NewsViewModel, apiKey: String, navController: NavController) {
     val articles = viewModel.newsState.collectAsState()
 
     val scaffoldState = rememberScaffoldState()
     val scope = rememberCoroutineScope()
     val drawerState = rememberDrawerState(DrawerValue.Closed)
+
+
+    val scrollState = rememberLazyListState()
+
     val isLoading by viewModel.isLoading
     val categories = listOf(
-        "GENERAL", "BUSINESS", "ENTERTAINMENT", "HEALTH", "SCIENCE", "SPORTS", "TECHNOLOGIES"
+        "GENERAL", "BUSINESS", "ENTERTAINMENT", "HEALTH", "SCIENCE", "SPORTS"
     )
     Scaffold(scaffoldState = scaffoldState, topBar = {
         TopAppBar(title = {
             androidx.compose.material3.Text("News Updates ")
-        }, colors = TopAppBarDefaults.topAppBarColors(
+        },
+            actions ={
+                Row(){
+                    IconButton(
+                        onClick = {
+                            navController.navigate("login")
+                        }
+                    ) {
+                        Icon(Icons.Default.ExitToApp,"Logout")
+                    }
+                    IconButton(
+                            onClick = {
+                                navController.navigate("saved")
+                            }
+                            ) {
+                        Icon(Icons.Default.Favorite,"Logout")
+                    }
+                }
+
+
+            }, colors = TopAppBarDefaults.topAppBarColors(
             containerColor = colorResource(id = R.color.light_blue) // Set your R.color value here
         ), navigationIcon = {
             IconButton(onClick = {
@@ -94,29 +134,56 @@ fun NewsScreen(viewModel: NewsViewModel, apiKey: String, navController: NavContr
         )
     }, drawerContent = {
         DrawerContent(categories, scope, scaffoldState, viewModel) { selectedCategory ->
-            //viewModel.fetchNewsByCategory(Constant.apiKey,selectedCategory)
+
+
+
+                viewModel.fetchNewsByCategory(Constant.apiKey,selectedCategory)
+
+
         }
     }, content = {
+
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
+                .padding(8.dp)
         ) {
-            CategoriesBar(viewModel)
+            SearchBarFun(viewModel)
             if(isLoading){
                 Column (
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally
                 ){
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = Color.Black)
                 }
 
             }else{
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(articles.value.size) { index ->
-                        NewsItem(article = articles.value[index], navController)
+                Box(modifier =  Modifier.fillMaxSize()) {
+
+
+                    LazyColumn(
+                        state = scrollState,
+                        modifier = Modifier.fillMaxSize()) {
+                        items(articles.value.size) { index ->
+                            NewsItem(article = articles.value[index], navController)
+                        }
                     }
+                    val coroutineScope = rememberCoroutineScope()
+                    InteractiveVerticalScrollbar(
+                        scrollState = scrollState,
+                        itemCount = articles.value.size,
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 8.dp),
+                        onScrollToItem = { targetIndex ->
+                            coroutineScope.launch {
+                                scrollState.animateScrollToItem(targetIndex)
+                            }
+                        }
+                    )
+
                 }
             }
         }
@@ -124,8 +191,52 @@ fun NewsScreen(viewModel: NewsViewModel, apiKey: String, navController: NavContr
 
     )
     // Trigger data fetch
-    viewModel.fetchEverythingWithQuery("india")
+   viewModel.fetchNews(Constant.apiKey)
+   // viewModel.fetchEverythingWithQuery("india")
 }
+
+
+@Composable
+fun InteractiveVerticalScrollbar(
+    scrollState: LazyListState,
+    itemCount: Int,
+    modifier: Modifier = Modifier,
+    width: Dp = 6.dp,
+    color: Color = Color.Gray,
+    onScrollToItem: (Int) -> Unit
+) {
+    // Calculate scrollbar height and offset dynamically
+    val totalItems = scrollState.layoutInfo.totalItemsCount
+    val visibleItems = scrollState.layoutInfo.visibleItemsInfo.size
+    val proportion = visibleItems.toFloat() / totalItems
+
+    val scrollbarHeight = proportion * 300.dp // Adjust height scaling
+    val scrollbarOffset = (scrollState.firstVisibleItemIndex.toFloat() / totalItems * 300).dp // Adjust offset scaling
+
+    Box(
+        modifier = modifier
+            .width(width)
+            .fillMaxHeight()
+            .background(Color.LightGray.copy(alpha = 0.5f))
+            .pointerInput(Unit) {
+                detectVerticalDragGestures { change, dragAmount ->
+                    change.consume() // Consume the touch event
+                    val newIndex = (scrollState.firstVisibleItemIndex + dragAmount / 300 * totalItems).toInt()
+                        .coerceIn(0, itemCount - 1) // Keep the index within bounds
+                    onScrollToItem(newIndex)
+                }
+            }
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(scrollbarHeight)
+                .offset(y = scrollbarOffset)
+                .background(color)
+        )
+    }
+}
+
 
 @Composable
 fun DrawerContent(
@@ -232,7 +343,7 @@ fun DrawerItem(
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun NewsItem(article: Article, navController: NavController) {
-    val context = LocalContext.current
+    //val context = LocalContext.current
     if (article.description != "[Removed]") {
     Card(
         modifier = Modifier
@@ -300,34 +411,105 @@ fun NewsItem(article: Article, navController: NavController) {
     }
 }
 
-@Composable
-fun CategoriesBar(newsViewModel: NewsViewModel) {
-    var searchQuery by remember {
-        mutableStateOf("")
-    }
-    OutlinedTextField(searchQuery, label = {
-        Text("Search News ")
-    }, onValueChange = { searchQuery = it }, trailingIcon = {
-        IconButton(onClick = {
-            //  isSearchExpanded=false
-            if (searchQuery.isNotEmpty()) {
-                newsViewModel.fetchEverythingWithQuery(searchQuery)
-                searchQuery = ""
-            }
-        }) {
-            Icon(imageVector = Icons.Default.Search, contentDescription = "Search Icon ")
-        }
-    }, modifier = Modifier
-        .padding(8.dp)
-        .fillMaxWidth()
-        // .border(1.dp, color = Color.Gray , CircleShape).clip(CircleShape)
-    )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchBarFun(newsViewModel: NewsViewModel) {
+    val searchedList = remember { mutableStateListOf<String>() }
+    var searched by remember { mutableStateOf("") }
+    Column (
+        modifier = Modifier.fillMaxWidth()
+    ){
+
+        var showHistory by remember { mutableStateOf(false) }
+        var act by remember { mutableStateOf(false) }
+        SearchBar(
+            modifier = Modifier.fillMaxWidth(),
+            query = searched,
+            placeholder = {
+                Text("Search here ")
+            },
+            onQueryChange = {
+                searched = it
+                showHistory = true
+            },
+            onSearch = {
+                searched = it
+            },
+            active = false,
+            onActiveChange = {
+                act = !act
+            },
+            leadingIcon = {
+                IconButton(
+                    onClick = {
+                        if(searched.isNotEmpty()){
+                            if(!searchedList.contains(searched)){
+                                searchedList.add(searched)
+                            }
+                            newsViewModel.fetchEverythingWithQuery(searched)
+                            searched = ""
+                            showHistory=false
+                        }
+
+                    }
+                ) {
+                    Icon(imageVector = Icons.Default.Search, contentDescription = "search icon ")
+                }
+            },
+            trailingIcon = {
+                IconButton(onClick = {
+                    searched=""
+                    showHistory = false
+                }) {
+                    Icon(imageVector = Icons.Default.Clear, contentDescription = "Clear icon ")
+                }
+            },
+        ) {
+
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+        if(showHistory) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(searchedList.reversed()) { item ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(8.dp),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "history"
+                        )
+                        androidx.compose.material3.Text(
+                            text = item,
+                            fontSize = 20.sp,
+                            modifier = Modifier.weight(1f).padding(8.dp).clickable {
+                                searched = item
+                                newsViewModel.fetchEverythingWithQuery(searched)
+                                searched = ""
+                                showHistory=false
+                            },
+                        )
+                        // Spacer(modifier = Modifier.weight(1f))
+                        IconButton(
+                            onClick = {
+                                searchedList.remove(item)
+                            },
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Clear,
+                                contentDescription = "clear"
+                            )
+
+                        }
+                    }
+
+                }
+            }
+        }
     }
+
 }
